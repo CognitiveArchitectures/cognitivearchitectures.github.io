@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <!-- Lienzo cuadrado (qlmanage no re-escala) — el contenido vive en la banda central
+       y=285..915, que es lo que se recorta a 1200x630 para el OG. -->
+  <rect width="1200" height="1200" fill="#141310"/>
+
+  <!-- Brand row -->
+  <rect x="100" y="330" width="80" height="80" rx="18" fill="#FAF9F6"/>
+  <text x="140" y="374" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="38"
+        font-weight="800" fill="#141310" text-anchor="middle" dominant-baseline="central">CA</text>
+  <text x="200" y="374" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="29"
+        font-weight="600" fill="#FAF9F6" dominant-baseline="central">Cognitive Architectures</text>
+
+  <!-- Headline -->
+  <text x="100" y="585" font-family="ui-serif, Georgia, 'Times New Roman', serif" font-size="78"
+        font-weight="400" fill="#FAF9F6">Tools for a deeper mind.</text>
+
+  <!-- Subhead -->
+  <text x="104" y="648" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="28"
+        fill="#9C988C">Software to help people think, learn, and live with depth.</text>
+
+  <!-- Nature line -->
+  <text x="104" y="855" font-family="ui-serif, Georgia, serif" font-size="26" font-style="italic"
+        fill="#8FB89A">Leave room for nature.</text>
+</svg>

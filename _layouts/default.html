@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="{{ site.lang | default: 'en' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  {%- assign page_title = page.title | default: site.title -%}
+  <title>{{ page_title }}</title>
+  <meta name="description" content="{{ page.description | default: site.description }}">
+  <link rel="canonical" href="{{ page.url | absolute_url }}">
+  <meta name="author" content="{{ site.author }}">
+  <meta name="theme-color" content="#FAF9F6" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141310" media="(prefers-color-scheme: dark)">
+  <!-- Icons -->
+  <link rel="icon" type="image/svg+xml" href="{{ '/favicon.svg' | relative_url }}">
+  <link rel="icon" type="image/png" href="{{ '/apple-touch-icon.png' | relative_url }}">
+  <link rel="apple-touch-icon" href="{{ '/apple-touch-icon.png' | relative_url }}">
+  <!-- Open Graph (miniatura al compartir) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ site.title }}">
+  <meta property="og:title" content="{{ page_title }}">
+  <meta property="og:description" content="{{ page.description | default: site.description }}">
+  <meta property="og:url" content="{{ page.url | absolute_url }}">
+  <meta property="og:image" content="{{ '/og-image.png?v=1' | absolute_url }}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="{{ site.title }} — {{ site.tagline }}">
+  <meta property="og:locale" content="en_US">
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ page_title }}">
+  <meta name="twitter:description" content="{{ page.description | default: site.description }}">
+  <meta name="twitter:image" content="{{ '/og-image.png?v=1' | absolute_url }}">
+  {%- if site.twitter %}<meta name="twitter:site" content="@{{ site.twitter }}">{%- endif %}
+  <style>
+  :root{
+    --bg:#FAF9F6; --ink:#1B1A17; --muted:#6E6B63; --hair:#E7E4DC;
+    --accent:#3E5C48; --card:#FFFFFF;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#141310; --ink:#EFEDE4; --muted:#9C988C; --hair:#2A2822;
+           --accent:#8FB89A; --card:#1C1B16; }
+  }
+  *{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .serif{ font-family:ui-serif,Georgia,"Times New Roman",serif; }
+  .wrap{ max-width:720px; margin:0 auto; padding:0 24px; }
+  a{ color:var(--accent); text-decoration:none; }
+  a:hover{ text-decoration:underline; text-underline-offset:3px; }
+
+  /* Header */
+  header{ padding:40px 0 0; }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .mono{
+    width:40px; height:40px; border-radius:9px; background:var(--ink);
+    color:var(--bg); display:grid; place-items:center;
+    font-weight:800; font-size:15px; letter-spacing:.02em; flex:0 0 auto;
+  }
+  .brand b{ font-size:16px; font-weight:600; letter-spacing:-.01em; }
+
+  /* Hero */
+  .hero{ padding:96px 0 72px; }
+  .hero h1{
+    font-size:clamp(30px,6vw,50px); line-height:1.15; font-weight:400;
+    letter-spacing:-.02em; margin:0 0 20px;
+  }
+  .hero p{ font-size:clamp(16px,2.6vw,19px); color:var(--muted); max-width:34ch; margin:0; }
+
+  section{ padding:44px 0; border-top:1px solid var(--hair); }
+  .eyebrow{ font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+            color:var(--muted); margin:0 0 18px; }
+  h2{ font-size:22px; font-weight:500; letter-spacing:-.01em; margin:0 0 10px; }
+  .lead{ color:var(--muted); margin:0; max-width:52ch; }
+
+  /* Product card */
+  .card{
+    background:var(--card); border:1px solid var(--hair); border-radius:16px;
+    padding:26px 26px 24px; margin-top:8px;
+  }
+  .card .row{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .card h3{ margin:0; font-size:20px; font-weight:600; letter-spacing:-.01em; }
+  .tag{ font-size:12px; color:var(--accent); border:1px solid var(--accent);
+        border-radius:100px; padding:3px 11px; white-space:nowrap; }
+  .card p{ color:var(--muted); margin:12px 0 16px; }
+  .card .go{ font-size:15px; font-weight:500; }
+
+  /* Contact */
+  .contact a{ font-weight:500; }
+  .contact .sep{ color:var(--hair); margin:0 12px; }
+
+  footer{ padding:56px 0 64px; border-top:1px solid var(--hair); }
+  footer .nature{ font-size:18px; color:var(--ink); margin:0 0 10px; }
+  footer small{ color:var(--muted); font-size:13px; }
+  </style>
+</head>
+<body>
+{{ content }}
+</body>
+</html>
