@@ -7,7 +7,7 @@ description: A software studio building tools that help people think, learn, and
 
   <header>
     <span class="brand">
-      <span class="mono">CA</span>
+      <span class="mono" id="marca">CA</span>
       <b>Cognitive Architectures</b>
     </span>
     <nav aria-label="Sections">
@@ -16,11 +16,23 @@ description: A software studio building tools that help people think, learn, and
       <a href="#contact">Contact</a>
     </nav>
   </header>
+  <script>
+  // El logo espera oculto a que llegue la red que se arma en el hero (script del final).
+  // Con movimiento reducido no hay vuelo; si algo falla, reaparece a los 8 s.
+  (function () {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var m = document.getElementById('marca'); m.style.opacity = 0;
+    window.__marcaRespaldo = setTimeout(function () { m.style.opacity = ''; }, 8000);
+  })();
+  </script>
 
   <div class="hero">
-    <p class="eyebrow">Software studio</p>
-    <h1>Tools for a deeper mind.</h1>
-    <p>We build software that helps people think, learn, and live with greater depth and intention.</p>
+    <canvas class="red" id="red" aria-hidden="true"></canvas>
+    <div class="hero-text">
+      <p class="eyebrow">Software studio</p>
+      <h1>Tools for a deeper mind.</h1>
+      <p>We build software that helps people think, learn, and live with greater depth and intention.</p>
+    </div>
   </div>
 
   <section>
@@ -111,3 +123,172 @@ description: A software studio building tools that help people think, learn, and
 
 </div>
 <script>document.getElementById('y').textContent = new Date().getFullYear();</script>
+<script>
+// Red de neuronas que se arma en «CA», vuela encogiéndose hasta el logo y ahí se vuelve el logo; la red
+// que queda en el hero se suelta y se queda tenue y quieta, como constelación. Decorativa (aria-hidden).
+// Con movimiento reducido: el logo de siempre y la constelación ya quieta. Tocar la constelación repite
+// todo. En teléfono: menos nodos, enlaces más cortos y más tenue. Al terminar no queda nada corriendo.
+(function () {
+  var cv = document.getElementById('red'), marca = document.getElementById('marca');
+  if (!cv || !cv.getContext || !marca) return;
+  var ctx = cv.getContext('2d'), W = 0, H = 0, fs = 1, nodos = [], metas = [], enlace = 40, raf = 0, t0 = 0;
+  var tinta = '', acento = '', quieta = false, ocupado = false, tenue = 1, ultimoL = 40, vuelo = null, pausa = 0;
+  var LIBRE = 72, TENUE = .28;
+  var quieto = matchMedia('(prefers-reduced-motion: reduce)'), oscuro = matchMedia('(prefers-color-scheme: dark)');
+  var DERIVA = 1300, VIAJE = 1900, ESCALON = 450, PAUSA = 700, VUELO = 1150, SUELTA = 2400;
+
+  function leerColores() {
+    var s = getComputedStyle(document.documentElement);
+    tinta = s.getPropertyValue('--ink').trim(); acento = s.getPropertyValue('--accent').trim();
+  }
+  function barajar(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.random() * (i + 1) | 0, t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function suave(x) { return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; }
+
+  // Puntos repartidos dentro de «CA», con la misma fuente que el monograma.
+  function puntosCA(n) {
+    var w = Math.max(1, Math.round(W)), h = Math.max(1, Math.round(H));
+    var off = document.createElement('canvas'); off.width = w; off.height = h;
+    var o = off.getContext('2d'), paso = 3, llenos = [], out = [];
+    fs = Math.min(h * .85, w * .58);
+    o.font = '800 ' + fs + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+    o.textAlign = 'center'; o.textBaseline = 'middle'; o.fillText('CA', w / 2, h / 2);
+    var d = o.getImageData(0, 0, w, h).data;
+    for (var y = 0; y < h; y += paso) for (var x = 0; x < w; x += paso) if (d[(y * w + x) * 4 + 3] > 128) llenos.push([x, y]);
+    barajar(llenos);
+    var sep = Math.sqrt(llenos.length * paso * paso / n) * .85;
+    for (var i = 0; i < llenos.length && out.length < n; i++) {
+      var p = llenos[i], lejos = true;
+      for (var k = 0; k < out.length && lejos; k++) { var dx = p[0] - out[k][0], dy = p[1] - out[k][1]; lejos = dx * dx + dy * dy >= sep * sep; }
+      if (lejos) out.push(p);
+    }
+    enlace = sep * 1.9;
+    return out;
+  }
+
+  function medir() {
+    var r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1), tel = r.width < 560;
+    W = r.width; H = r.height;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    LIBRE = tel ? 52 : 72; TENUE = tel ? .18 : .28;
+    metas = puntosCA(tel ? 80 : 150);
+  }
+
+  function sembrar() {
+    nodos = metas.map(function (m) {
+      return { x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - .5) * .8, vy: (Math.random() - .5) * .8,
+               tx: m[0], ty: m[1], ret: Math.random() * ESCALON, sx: 0, sy: 0, ex: 0, ey: 0 };
+    });
+  }
+
+  // Puntos y sus enlaces, en el lienzo del hero o en el del vuelo.
+  function pintar(g, pts, L, r, lw, alfa) {
+    g.strokeStyle = acento; g.lineWidth = lw;
+    for (var i = 0; i < pts.length; i++) for (var j = i + 1; j < pts.length; j++) {
+      var a = pts[i], b = pts[j], dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy;
+      if (d2 < L * L) {
+        g.globalAlpha = alfa * .6 * (1 - Math.sqrt(d2) / L);
+        g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
+      }
+    }
+    g.globalAlpha = alfa * .9; g.fillStyle = tinta;
+    for (var k = 0; k < pts.length; k++) { g.beginPath(); g.arc(pts[k].x, pts[k].y, r, 0, 6.2832); g.fill(); }
+    g.globalAlpha = 1;
+  }
+  function dibujar(L) { ultimoL = L; ctx.clearRect(0, 0, W, H); pintar(ctx, nodos, L, 2.1, 1.2, tenue); }
+
+  // 1) La red deriva y se arma en «CA».
+  function cuadro(t) {
+    var e = t - t0, listo = true;
+    for (var i = 0; i < nodos.length; i++) {
+      var n = nodos[i];
+      if (e < DERIVA + n.ret) {
+        n.x += n.vx; n.y += n.vy;
+        if (n.x < 0 || n.x > W) n.vx *= -1;
+        if (n.y < 0 || n.y > H) n.vy *= -1;
+        n.sx = n.x; n.sy = n.y; listo = false;
+      } else {
+        var p = Math.min(1, (e - DERIVA - n.ret) / VIAJE), s = suave(p);
+        n.x = n.sx + (n.tx - n.sx) * s; n.y = n.sy + (n.ty - n.sy) * s;
+        if (p < 1) listo = false;
+      }
+    }
+    var avance = Math.max(0, Math.min(1, (e - DERIVA) / (VIAJE + ESCALON)));
+    dibujar(LIBRE + (enlace - LIBRE) * avance);
+    if (!listo) { raf = requestAnimationFrame(cuadro); return; }
+    if (scrollY > 60) { mostrarMarca(); soltar(); return; }  // ya bajó: sin vuelo
+    pausa = setTimeout(volar, PAUSA);
+  }
+
+  function mostrarMarca() {
+    clearTimeout(window.__marcaRespaldo);
+    marca.style.transition = 'opacity .35s ease'; marca.style.opacity = 1;
+  }
+
+  // 2) Una copia de la «CA» vuela encogiéndose hasta el logo; al llegar, el logo aparece y la copia se va.
+  function volar() {
+    var dpr = Math.min(2, window.devicePixelRatio || 1), cap = document.createElement('canvas');
+    cap.className = 'vuelo'; cap.setAttribute('aria-hidden', 'true');
+    cap.width = Math.round(innerWidth * dpr); cap.height = Math.round(innerHeight * dpr);
+    document.body.appendChild(cap); vuelo = cap;
+    var g = cap.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var base = metas.map(function (m) { return { x: m[0], y: m[1] }; }), t1 = performance.now(), kFin = 14 / fs;
+    soltar();
+    function paso(t) {
+      if (vuelo !== cap) return;
+      var u = Math.min(1, (t - t1) / VUELO), s = suave(u), r0 = cv.getBoundingClientRect(), r1 = marca.getBoundingClientRect();
+      var ax = r0.left + W / 2, ay = r0.top + H / 2, bx = r1.left + r1.width / 2, by = r1.top + r1.height / 2;
+      var k = 1 + (kFin - 1) * s, cx = ax + (bx - ax) * s, cy = ay + (by - ay) * s;
+      var pts = base.map(function (q) { return { x: cx + (q.x - W / 2) * k, y: cy + (q.y - H / 2) * k }; });
+      g.clearRect(0, 0, innerWidth, innerHeight);
+      pintar(g, pts, enlace * k, 2.1 - 1.3 * s, 1.2 - .7 * s, 1);
+      if (u < 1) { requestAnimationFrame(paso); return; }
+      mostrarMarca();
+      cap.style.transition = 'opacity .35s ease'; cap.style.opacity = 0;
+      setTimeout(function () { cap.remove(); if (vuelo === cap) vuelo = null; }, 450);
+    }
+    requestAnimationFrame(paso);
+  }
+
+  // 3) La red del hero se suelta y queda tenue y quieta.
+  function soltar() {
+    var t2 = performance.now();
+    nodos.forEach(function (n) { n.sx = n.x; n.sy = n.y; n.ex = Math.random() * W; n.ey = Math.random() * H; });
+    (function paso(t) {
+      var u = Math.min(1, (t - t2) / SUELTA), s = suave(u);
+      nodos.forEach(function (n) { n.x = n.sx + (n.ex - n.sx) * s; n.y = n.sy + (n.ey - n.sy) * s; });
+      tenue = 1 - (1 - TENUE) * s;
+      dibujar(enlace + (LIBRE - enlace) * s);
+      if (u < 1) raf = requestAnimationFrame(paso); else { quieta = true; ocupado = false; }
+    })(t2);
+  }
+
+  // El final directo: movimiento reducido o cambio de tamaño.
+  function constelacion() {
+    nodos.forEach(function (n) { n.x = Math.random() * W; n.y = Math.random() * H; });
+    tenue = TENUE; quieta = true; ocupado = false; dibujar(LIBRE);
+  }
+
+  function animar() {
+    if (ocupado) return;
+    ocupado = true; quieta = false; tenue = 1; marca.style.opacity = 0;
+    sembrar(); t0 = performance.now(); raf = requestAnimationFrame(cuadro);
+  }
+
+  leerColores(); medir();
+  if (quieto.matches) { sembrar(); constelacion(); } else animar();
+  cv.addEventListener('click', function () { if (!quieto.matches) animar(); });
+  function alCambiarTema() { leerColores(); if (quieta) dibujar(ultimoL); }
+  if (oscuro.addEventListener) oscuro.addEventListener('change', alCambiarTema); else oscuro.addListener(alCambiarTema);
+  var esperaTam;
+  addEventListener('resize', function () {
+    clearTimeout(esperaTam);
+    esperaTam = setTimeout(function () {
+      if (Math.abs(cv.getBoundingClientRect().width - W) < 1) return;
+      cancelAnimationFrame(raf); clearTimeout(pausa);
+      if (vuelo) { vuelo.remove(); vuelo = null; }
+      mostrarMarca(); medir(); sembrar(); constelacion();
+    }, 200);
+  });
+})();
+</script>
