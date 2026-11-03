@@ -77,6 +77,11 @@
     font-weight:800; font-size:14px; letter-spacing:.03em; flex:0 0 auto;
   }
   .brand b{ font-size:15.5px; font-weight:600; letter-spacing:.004em; }
+  /* El nombre se descubre de izquierda a derecha cuando aterriza el logo (script del index) */
+  .brand b{ -webkit-clip-path:inset(-4px 0 -4px 0); clip-path:inset(-4px 0 -4px 0); }
+  .brand.velado b{ -webkit-clip-path:inset(-4px 100% -4px 0); clip-path:inset(-4px 100% -4px 0); opacity:0; transform:translateX(-10px); }
+  .brand.anima b{ transition:clip-path .75s cubic-bezier(.2,.7,.2,1), -webkit-clip-path .75s cubic-bezier(.2,.7,.2,1),
+                  opacity .5s ease, transform .75s cubic-bezier(.2,.7,.2,1); }
 
   /* Hero */
   .hero{ padding:88px 0 78px; }
