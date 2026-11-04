@@ -126,16 +126,18 @@ description: A software studio building tools that help people think, learn, and
 <script>document.getElementById('y').textContent = new Date().getFullYear();</script>
 <script>
 // Red de neuronas que se arma en «CA», vuela encogiéndose hasta el logo y ahí se vuelve el logo; el nombre
-// se descubre saliendo de él. La red que queda en el hero se suelta y queda tenue y quieta, como
-// constelación. Decorativa (aria-hidden). Con movimiento reducido: el logo de siempre y la constelación ya
-// quieta. Tocar la constelación repite todo. En teléfono: menos nodos, enlaces más cortos y más tenue.
-// Al terminar no queda nada corriendo.
+// se descubre saliendo de él. La red que queda en el hero se suelta y sigue viva, tenue: deriva despacio, sus
+// enlaces nacen y se apagan, y de vez en cuando una chispa salta de neurona en neurona. Decorativa
+// (aria-hidden). Con movimiento reducido: el logo de siempre y la constelación quieta. Tocar la constelación
+// repite todo. En teléfono: menos nodos, enlaces más cortos y más tenue.
+// Costo: la red viva corre a 30 cuadros y se duerme fuera de pantalla o con la pestaña oculta; los enlaces se
+// trazan por niveles de opacidad (pocos stroke por cuadro, no uno por enlace).
 (function () {
   var cv = document.getElementById('red'), marca = document.getElementById('marca');
   if (!cv || !cv.getContext || !marca) return;
   var ctx = cv.getContext('2d'), W = 0, H = 0, fs = 1, nodos = [], metas = [], enlace = 40, raf = 0, t0 = 0;
   var tinta = '', acento = '', quieta = false, ocupado = false, tenue = 1, ultimoL = 40, vuelo = null, pausa = 0;
-  var LIBRE = 72, TENUE = .28;
+  var LIBRE = 72, TENUE = .28, vivo = false, enVista = true, ultimoT = 0, tVivo = 0, chispa = null, proxChispa = 0;
   var quieto = matchMedia('(prefers-reduced-motion: reduce)'), oscuro = matchMedia('(prefers-color-scheme: dark)');
   var DERIVA = 1300, VIAJE = 1900, ESCALON = 450, PAUSA = 700, VUELO = 1150, SUELTA = 2400;
 
@@ -185,17 +187,19 @@ description: A software studio building tools that help people think, learn, and
 
   // Puntos y sus enlaces, en el lienzo del hero o en el del vuelo.
   function pintar(g, pts, L, r, lw, alfa) {
-    g.strokeStyle = acento; g.lineWidth = lw;
+    var niveles = [new Path2D(), new Path2D(), new Path2D(), new Path2D(), new Path2D()], L2 = L * L, k;
     for (var i = 0; i < pts.length; i++) for (var j = i + 1; j < pts.length; j++) {
       var a = pts[i], b = pts[j], dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy;
-      if (d2 < L * L) {
-        g.globalAlpha = alfa * .6 * (1 - Math.sqrt(d2) / L);
-        g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
+      if (d2 < L2) {
+        var t = niveles[Math.min(4, (1 - Math.sqrt(d2) / L) * 5 | 0)];
+        t.moveTo(a.x, a.y); t.lineTo(b.x, b.y);
       }
     }
-    g.globalAlpha = alfa * .9; g.fillStyle = tinta;
-    for (var k = 0; k < pts.length; k++) { g.beginPath(); g.arc(pts[k].x, pts[k].y, r, 0, 6.2832); g.fill(); }
-    g.globalAlpha = 1;
+    g.strokeStyle = acento; g.lineWidth = lw;
+    for (k = 0; k < 5; k++) { g.globalAlpha = alfa * .6 * (k + .5) / 5; g.stroke(niveles[k]); }
+    g.globalAlpha = alfa * .9; g.fillStyle = tinta; g.beginPath();
+    for (k = 0; k < pts.length; k++) { g.moveTo(pts[k].x + r, pts[k].y); g.arc(pts[k].x, pts[k].y, r, 0, 6.2832); }
+    g.fill(); g.globalAlpha = 1;
   }
   function dibujar(L) { ultimoL = L; ctx.clearRect(0, 0, W, H); pintar(ctx, nodos, L, 2.1, 1.2, tenue); }
 
@@ -255,7 +259,7 @@ description: A software studio building tools that help people think, learn, and
     requestAnimationFrame(paso);
   }
 
-  // 3) La red del hero se suelta y queda tenue y quieta.
+  // 3) La red del hero se suelta, queda tenue y sigue viva.
   function soltar() {
     var t2 = performance.now();
     nodos.forEach(function (n) { n.sx = n.x; n.sy = n.y; n.ex = Math.random() * W; n.ey = Math.random() * H; });
@@ -264,18 +268,75 @@ description: A software studio building tools that help people think, learn, and
       nodos.forEach(function (n) { n.x = n.sx + (n.ex - n.sx) * s; n.y = n.sy + (n.ey - n.sy) * s; });
       tenue = 1 - (1 - TENUE) * s;
       dibujar(enlace + (LIBRE - enlace) * s);
-      if (u < 1) raf = requestAnimationFrame(paso); else { quieta = true; ocupado = false; }
+      if (u < 1) raf = requestAnimationFrame(paso); else { quieta = true; ocupado = false; aLaDeriva(); }
     })(t2);
   }
 
   // El final directo: movimiento reducido o cambio de tamaño.
   function constelacion() {
     nodos.forEach(function (n) { n.x = Math.random() * W; n.y = Math.random() * H; });
-    tenue = TENUE; quieta = true; ocupado = false; dibujar(LIBRE);
+    tenue = TENUE; quieta = true; ocupado = false; dibujar(LIBRE); aLaDeriva();
+  }
+
+  // 4) La red viva. Las velocidades entran poco a poco para no notar el cambio desde `soltar`.
+  function aLaDeriva() {
+    nodos.forEach(function (n) {
+      var ang = Math.random() * 6.2832, v = 5 + Math.random() * 9;  // px por segundo
+      n.vx = Math.cos(ang) * v; n.vy = Math.sin(ang) * v;
+    });
+    tVivo = performance.now(); proxChispa = tVivo + 1500; chispa = null;
+    despertar();
+  }
+  function despertar() {
+    if (vivo || !quieta || !enVista || document.hidden || quieto.matches) return;
+    vivo = true; ultimoT = performance.now(); raf = requestAnimationFrame(latido);
+  }
+  function dormir() {
+    if (!vivo) return;
+    vivo = false; cancelAnimationFrame(raf);
+  }
+  function latido(t) {
+    if (!vivo) return;
+    raf = requestAnimationFrame(latido);
+    if (t - ultimoT < 30) return;
+    var dt = Math.min(100, t - ultimoT) / 1000, f = Math.min(1, (t - tVivo) / 2000);
+    ultimoT = t;
+    for (var i = 0; i < nodos.length; i++) {
+      var n = nodos[i];
+      n.x += n.vx * dt * f; n.y += n.vy * dt * f;
+      if (n.x < 0 || n.x > W) { n.vx *= -1; n.x = Math.max(0, Math.min(W, n.x)); }
+      if (n.y < 0 || n.y > H) { n.vy *= -1; n.y = Math.max(0, Math.min(H, n.y)); }
+    }
+    dibujar(LIBRE);
+    moverChispa(t, dt);
+  }
+
+  // Una chispa recorre varias neuronas vecinas y se apaga; la siguiente llega a los pocos segundos.
+  function vecina(n, salvo) {
+    var op = nodos.filter(function (m) { var dx = m.x - n.x, dy = m.y - n.y; return m !== n && m !== salvo && dx * dx + dy * dy < LIBRE * LIBRE * .6; });
+    return op.length ? op[Math.random() * op.length | 0] : null;
+  }
+  function moverChispa(t, dt) {
+    if (!chispa) {
+      if (t < proxChispa || !nodos.length) return;
+      var de = nodos[Math.random() * nodos.length | 0], a = vecina(de);
+      if (!a) return;
+      chispa = { de: de, a: a, u: 0, saltos: 3 + (Math.random() * 3 | 0) };
+    }
+    chispa.u += dt / .42;
+    if (chispa.u >= 1) {
+      var sig = chispa.saltos > 1 ? vecina(chispa.a, chispa.de) : null;
+      if (!sig) { chispa = null; proxChispa = t + 1500 + Math.random() * 2500; return; }
+      chispa.de = chispa.a; chispa.a = sig; chispa.u = 0; chispa.saltos--;
+    }
+    var x = chispa.de.x + (chispa.a.x - chispa.de.x) * chispa.u, y = chispa.de.y + (chispa.a.y - chispa.de.y) * chispa.u;
+    ctx.globalAlpha = .85; ctx.fillStyle = acento;
+    ctx.beginPath(); ctx.arc(x, y, 2.4, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1;
   }
 
   function animar() {
     if (ocupado) return;
+    dormir(); chispa = null;
     ocupado = true; quieta = false; tenue = 1; marca.style.opacity = 0; marca.parentNode.classList.add('velado');
     sembrar(); t0 = performance.now(); raf = requestAnimationFrame(cuadro);
   }
@@ -285,12 +346,17 @@ description: A software studio building tools that help people think, learn, and
   cv.addEventListener('click', function () { if (!quieto.matches) animar(); });
   function alCambiarTema() { leerColores(); if (quieta) dibujar(ultimoL); }
   if (oscuro.addEventListener) oscuro.addEventListener('change', alCambiarTema); else oscuro.addListener(alCambiarTema);
+  if (window.IntersectionObserver) new IntersectionObserver(function (es) {
+    enVista = es[es.length - 1].isIntersecting;
+    if (enVista) despertar(); else dormir();
+  }).observe(cv);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) dormir(); else despertar(); });
   var esperaTam;
   addEventListener('resize', function () {
     clearTimeout(esperaTam);
     esperaTam = setTimeout(function () {
       if (Math.abs(cv.getBoundingClientRect().width - W) < 1) return;
-      cancelAnimationFrame(raf); clearTimeout(pausa);
+      dormir(); cancelAnimationFrame(raf); clearTimeout(pausa);
       if (vuelo) { vuelo.remove(); vuelo = null; }
       mostrarMarca(); medir(); sembrar(); constelacion();
     }, 200);
