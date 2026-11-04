@@ -125,8 +125,8 @@ description: A software studio building tools that help people think, learn, and
 </div>
 <script>document.getElementById('y').textContent = new Date().getFullYear();</script>
 <script>
-// Red de neuronas que se arma en «CA», vuela encogiéndose hasta el logo y ahí se vuelve el logo; el nombre
-// se descubre saliendo de él. La red que queda en el hero se suelta y sigue viva, tenue: deriva despacio, sus
+// Red de neuronas que se arma en «CA»; sus neuronas viajan una por una hasta el logo, que se enciende conforme
+// llegan, y el nombre se descubre saliendo de él. La red que queda en el hero se suelta y sigue viva, tenue: deriva despacio, sus
 // enlaces nacen y se apagan, y de vez en cuando una chispa salta de neurona en neurona. Decorativa
 // (aria-hidden). Con movimiento reducido: el logo de siempre y la constelación quieta. Tocar la constelación
 // repite todo. En teléfono: menos nodos, enlaces más cortos y más tenue.
@@ -139,7 +139,7 @@ description: A software studio building tools that help people think, learn, and
   var tinta = '', acento = '', quieta = false, ocupado = false, tenue = 1, ultimoL = 40, vuelo = null, pausa = 0;
   var LIBRE = 72, TENUE = .28, vivo = false, enVista = true, ultimoT = 0, tVivo = 0, chispa = null, proxChispa = 0;
   var quieto = matchMedia('(prefers-reduced-motion: reduce)'), oscuro = matchMedia('(prefers-color-scheme: dark)');
-  var DERIVA = 1300, VIAJE = 1900, ESCALON = 450, PAUSA = 700, VUELO = 1150, SUELTA = 2400;
+  var DERIVA = 1300, VIAJE = 1900, ESCALON = 450, PAUSA = 300, VUELO = 1050, ESPARCE = 950, SUELTA = 2400;
 
   function leerColores() {
     var s = getComputedStyle(document.documentElement);
@@ -234,27 +234,43 @@ description: A software studio building tools that help people think, learn, and
     setTimeout(function () { marca.parentNode.classList.remove('velado'); }, 180);
   }
 
-  // 2) Una copia de la «CA» vuela encogiéndose hasta el logo; al llegar, el logo aparece y la copia se va.
+  // 2) La luz sale de la «CA»: cada neurona viaja por su cuenta hasta su lugar en el logo, primero las más cercanas y
+  // por una curva propia. Mientras tanto la red del hero se suelta, y el logo se enciende conforme van llegando.
   function volar() {
     var dpr = Math.min(2, window.devicePixelRatio || 1), cap = document.createElement('canvas');
     cap.className = 'vuelo'; cap.setAttribute('aria-hidden', 'true');
     cap.width = Math.round(innerWidth * dpr); cap.height = Math.round(innerHeight * dpr);
     document.body.appendChild(cap); vuelo = cap;
     var g = cap.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    var base = metas.map(function (m) { return { x: m[0], y: m[1] }; }), t1 = performance.now(), kFin = 14 / fs;
+    var r00 = cv.getBoundingClientRect(), r10 = marca.getBoundingClientRect(), bx0 = r10.left + r10.width / 2, by0 = r10.top + r10.height / 2;
+    var t1 = performance.now(), kFin = 14 / fs, dMin = Infinity, dMax = 0, mostrada = false;
+    var viaje = metas.map(function (m) {
+      var d = Math.hypot(r00.left + m[0] - bx0, r00.top + m[1] - by0);
+      dMin = Math.min(dMin, d); dMax = Math.max(dMax, d);
+      return { x: m[0], y: m[1], d: d, curva: (Math.random() - .5) * .34 };
+    });
+    viaje.forEach(function (v) { v.ret = (v.d - dMin) / (dMax - dMin || 1) * ESPARCE * .8 + Math.random() * ESPARCE * .2; });
     soltar();
     function paso(t) {
       if (vuelo !== cap) return;
-      var u = Math.min(1, (t - t1) / VUELO), s = suave(u), r0 = cv.getBoundingClientRect(), r1 = marca.getBoundingClientRect();
-      var ax = r0.left + W / 2, ay = r0.top + H / 2, bx = r1.left + r1.width / 2, by = r1.top + r1.height / 2;
-      var k = 1 + (kFin - 1) * s, cx = ax + (bx - ax) * s, cy = ay + (by - ay) * s;
-      var pts = base.map(function (q) { return { x: cx + (q.x - W / 2) * k, y: cy + (q.y - H / 2) * k }; });
+      var r0 = cv.getBoundingClientRect(), r1 = marca.getBoundingClientRect(), bx = r1.left + r1.width / 2, by = r1.top + r1.height / 2, llegaron = 0, suma = 0, e = t - t1;
+      var pts = viaje.map(function (v) {
+        var p = Math.max(0, Math.min(1, (e - v.ret) / VUELO)), s = suave(p), ax = r0.left + v.x, ay = r0.top + v.y;
+        var fx = bx + (v.x - W / 2) * kFin, fy = by + (v.y - H / 2) * kFin, cx = (ax + fx) / 2 - (fy - ay) * v.curva, cy = (ay + fy) / 2 + (fx - ax) * v.curva, i = 1 - s;
+        if (p >= 1) llegaron++;
+        suma += s;
+        return { x: i * i * ax + 2 * i * s * cx + s * s * fx, y: i * i * ay + 2 * i * s * cy + s * s * fy };
+      });
+      var avance = suma / viaje.length, parte = llegaron / viaje.length;
       g.clearRect(0, 0, innerWidth, innerHeight);
-      pintar(g, pts, enlace * k, 2.1 - 1.3 * s, 1.2 - .7 * s, 1);
-      if (u < 1) { requestAnimationFrame(paso); return; }
-      mostrarMarca();
-      cap.style.transition = 'opacity .35s ease'; cap.style.opacity = 0;
-      setTimeout(function () { cap.remove(); if (vuelo === cap) vuelo = null; }, 450);
+      pintar(g, pts, enlace * (1 - .8 * avance), 2.1 - 1.3 * avance, 1.2 - .7 * avance, 1);
+      if (!mostrada) {
+        marca.style.transition = 'none'; marca.style.opacity = parte;
+        if (parte >= .6) { mostrada = true; mostrarMarca(); }
+      }
+      if (llegaron < viaje.length) { requestAnimationFrame(paso); return; }
+      cap.style.transition = 'opacity .2s ease'; cap.style.opacity = 0;
+      setTimeout(function () { cap.remove(); if (vuelo === cap) vuelo = null; }, 240);
     }
     requestAnimationFrame(paso);
   }
