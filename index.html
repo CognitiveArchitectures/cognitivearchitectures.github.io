@@ -128,15 +128,15 @@ description: A software studio building tools that help people think, learn, and
 // Red de neuronas que se arma en «CA»; sus neuronas viajan una por una hasta el logo, que se enciende conforme
 // llegan, y el nombre se descubre saliendo de él. La red que queda en el hero se suelta y sigue viva, tenue: deriva despacio, sus
 // enlaces nacen y se apagan, y de vez en cuando una chispa salta de neurona en neurona. Decorativa
-// (aria-hidden). Con movimiento reducido: el logo de siempre y la constelación quieta. Tocar la constelación
-// repite todo. En teléfono: menos nodos, enlaces más cortos y más tenue. Al rato, la red forma figuras (ver `crearFiguras`).
+// (aria-hidden). Con movimiento reducido: el logo de siempre y la constelación quieta. «CA» pasa una sola vez,
+// al cargar; tocar no hace nada. En teléfono: menos nodos, enlaces más cortos y más tenue. Al rato, la red forma figuras (ver `crearFiguras`).
 // Costo: la red viva corre a 30 cuadros y se duerme fuera de pantalla o con la pestaña oculta; los enlaces se
 // trazan por niveles de opacidad (pocos stroke por cuadro, no uno por enlace).
 (function () {
   var cv = document.getElementById('red'), marca = document.getElementById('marca');
   if (!cv || !cv.getContext || !marca) return;
   var ctx = cv.getContext('2d'), W = 0, H = 0, fs = 1, nodos = [], metas = [], enlace = 40, raf = 0, t0 = 0;
-  var tinta = '', acento = '', quieta = false, ocupado = false, tenue = 1, ultimoL = 40, vuelo = null, pausa = 0;
+  var tinta = '', acento = '', quieta = false, tenue = 1, ultimoL = 40, vuelo = null, pausa = 0;
   var LIBRE = 72, TENUE = .28, vivo = false, enVista = true, ultimoT = 0, tVivo = 0, chispa = null, proxChispa = 0;
   var TOTAL = 156, enVivo = 0, figuras = null, PRIMERA = 20;  // neuronas de la red viva; segundos con ella antes de la primera figura
   var quieto = matchMedia('(prefers-reduced-motion: reduce)'), oscuro = matchMedia('(prefers-color-scheme: dark)');
@@ -294,7 +294,7 @@ description: A software studio building tools that help people think, learn, and
       nodos.forEach(function (n) { n.x = n.sx + (n.ex - n.sx) * s; n.y = n.sy + (n.ey - n.sy) * s; });
       tenue = 1 - (1 - TENUE) * s;
       dibujar(enlace + (LIBRE - enlace) * s);
-      if (u < 1) raf = requestAnimationFrame(paso); else { quieta = true; ocupado = false; aLaDeriva(); }
+      if (u < 1) raf = requestAnimationFrame(paso); else { quieta = true; aLaDeriva(); }
     })(t2);
   }
 
@@ -302,7 +302,7 @@ description: A software studio building tools that help people think, learn, and
   function constelacion() {
     completar();
     nodos.forEach(function (n) { n.x = Math.random() * W; n.y = Math.random() * H; });
-    tenue = TENUE; quieta = true; ocupado = false; dibujar(LIBRE); aLaDeriva();
+    tenue = TENUE; quieta = true; dibujar(LIBRE); aLaDeriva();
   }
 
   // 4) La red viva. Las velocidades entran poco a poco para no notar el cambio desde `soltar`.
@@ -851,15 +851,12 @@ description: A software studio building tools that help people think, learn, and
   }
 
   function animar() {
-    if (ocupado) return;
-    dormir(); chispa = null; figuras = null;
-    ocupado = true; quieta = false; tenue = 1; marca.style.opacity = 0; marca.parentNode.classList.add('velado');
+    quieta = false; tenue = 1; marca.style.opacity = 0; marca.parentNode.classList.add('velado');
     sembrar(); t0 = performance.now(); raf = requestAnimationFrame(cuadro);
   }
 
   leerColores(); medir();
   if (quieto.matches) { sembrar(); constelacion(); } else animar();
-  cv.addEventListener('click', function () { if (!quieto.matches) animar(); });
   function alCambiarTema() { leerColores(); if (quieta && !figuras) dibujar(ultimoL); }
   if (oscuro.addEventListener) oscuro.addEventListener('change', alCambiarTema); else oscuro.addListener(alCambiarTema);
   if (window.IntersectionObserver) new IntersectionObserver(function (es) {
