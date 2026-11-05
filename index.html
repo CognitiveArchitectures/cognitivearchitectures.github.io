@@ -129,7 +129,8 @@ description: A software studio building tools that help people think, learn, and
 // llegan, y el nombre se descubre saliendo de él. La red que queda en el hero se suelta y sigue viva, tenue: deriva despacio, sus
 // enlaces nacen y se apagan, y de vez en cuando una chispa salta de neurona en neurona. Decorativa
 // (aria-hidden). Con movimiento reducido: el logo de siempre y la constelación quieta. «CA» pasa una sola vez,
-// al cargar; tocar no hace nada. En teléfono: menos nodos, enlaces más cortos y más tenue. Al rato, la red forma figuras (ver `crearFiguras`).
+// al cargar. En teléfono: menos nodos, enlaces más cortos y más tenue. Al rato, la red forma figuras (ver `crearFiguras`), solo
+// para quien se queda mirando: al tocar la página, los puntos vuelven despacio a la red y la espera empieza de nuevo.
 // Costo: la red viva corre a 30 cuadros y se duerme fuera de pantalla o con la pestaña oculta; los enlaces se
 // trazan por niveles de opacidad (pocos stroke por cuadro, no uno por enlace).
 (function () {
@@ -328,7 +329,7 @@ description: A software studio building tools that help people think, learn, and
     if (t - ultimoT < 30) return;
     var dt = Math.min(100, t - ultimoT) / 1000, f = Math.min(1, (t - tVivo) / 2000);
     ultimoT = t;
-    if (figuras) { figuras(dt); return; }
+    if (figuras) { if (figuras(dt)) { figuras = null; enVivo = 0; } return; }
     for (var i = 0; i < nodos.length; i++) {
       var n = nodos[i];
       n.x += n.vx * dt * f; n.y += n.vy * dt * f;
@@ -372,8 +373,8 @@ description: A software studio building tools that help people think, learn, and
   // pantalla y el resto lo pone `latido`. Costo: a lo más unos milisegundos por cuadro; los enlaces, por capas.
   function crearFiguras() {
   var mx = W / 2, my = H / 2, talla = Math.min(W, H) * .44, baja = H < 240, N = nodos.length;
-  var VUELTA = 6.28318, QUEDA = 8, SALE = 5, RED = 22, FORMA = 7, CAMBIA = 5, ENDEREZA = 8.5;
-  var figs = [], act = null, sig = null, idx = -1, sentido = 1, e = 0, reloj = 0, u = 0, w = 0, uA = 0, uB = 0, fase = 2, dest = null, enRed = RED;  // fase: 0 figura, 1 se suelta, 2 red, 3 se forma, 4 cambio directo, 5 serpiente y árbol
+  var VUELTA = 6.28318, REGRESA = 4.5, QUEDA = 8, SALE = 5, RED = 22, FORMA = 7, CAMBIA = 5, ENDEREZA = 8.5;
+  var figs = [], act = null, sig = null, idx = -1, sentido = 1, e = 0, reloj = 0, u = 0, w = 0, uA = 0, uB = 0, fase = 2, dest = null, enRed = RED;  // fase: 0 figura, 1 se suelta, 2 red, 3 se forma, 4 cambio directo, 5 serpiente y árbol, 6 regresa a la red por un toque
   var ind = [], perm = [], nodoA = [], nodoB = [], chispas = [];
 
   function tramo(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
@@ -710,6 +711,32 @@ description: A software studio building tools that help people think, learn, and
     act = dest || sig; sig = null; dest = null; ind = perm; nodoA = nodoB; fase = 0; nuevasChispas();
     u = sentido > 0 ? 0 : 1;
   }
+  // Un toque: lo que esté en pantalla se apaga y cada punto vuelve despacio a la red desde donde iba, en cualquier fase.
+  var deR = null, vaR = null, qDe = null, qVa = null, lDe = 0, lVa = 0, uDe = 0, m0 = 0, a0 = .82, terminado = false;
+  function regresar() {
+    if (fase === 6) return;
+    if (fase === 2) { terminado = true; return; }
+    var sv = suave(tramo(w)), V = Math.sin(Math.min(1, w) * 3.1416), i, n;
+    uDe = fase === 0 ? tramo(u) : uA; a0 = .82; lDe = lVa = 0; deR = vaR = null;
+    if (fase === 0) { deR = act; qDe = nodoA; lDe = 1; m0 = 0; }
+    else if (fase === 1) { deR = act; qDe = nodoA; lDe = 1 - suave(tramo(w / .5)); m0 = sv + V * 1.6; a0 = .82 + (TENUE * .9 - .82) * sv; }
+    else if (fase === 3) { vaR = dest; qVa = nodoB; lVa = suave(tramo((w - .5) / .5)); m0 = 1 - sv + V * 1.6; a0 = .82 + (TENUE * .9 - .82) * (1 - sv); }
+    else if (fase === 4) { deR = act; qDe = nodoA; vaR = sig; qVa = nodoB; lDe = 1 - suave(tramo(w / .42)); lVa = suave(tramo((w - .58) / .42)); m0 = V * 2.8; }
+    else {
+      var g = act === figs[2] ? tramo(w) : 1 - tramo(w), g2 = tramo((g - .5) / .5), ade = act === figs[2];
+      deR = figs[2]; qDe = ade ? nodoA : nodoB; vaR = figs[3]; qVa = ade ? nodoB : nodoA; uDe = 0;
+      lDe = 1 - suave(tramo((g - .36) / .1)); lVa = suave(tramo((g - .4) / .1)); m0 = Math.sin(g2 * 3.1416) * 3.4;
+    }
+    for (i = 0; i < N; i++) {
+      n = nodos[i]; n.sx = n.x; n.sy = n.y;
+      if (fase === 0) n.r0 = act.r[ind[i]];
+      else if (fase === 1) n.r0 = act.r[ind[i]] + (2.1 - act.r[ind[i]]) * sv;
+      else if (fase === 3) n.r0 = dest.r[perm[i]] + (2.1 - dest.r[perm[i]]) * (1 - sv);
+      else if (fase === 4) n.r0 = act.r[ind[i]] + (sig.r[perm[i]] - act.r[ind[i]]) * sv;
+      else n.r0 = figs[2].r[deSerpiente[i]] + (figs[3].r[deArbol[i]] - figs[2].r[deSerpiente[i]]) * g;
+    }
+    fase = 6; w = 0;
+  }
   function paso(dt) {
     reloj += dt; e += sentido * dt;
     var i, n, p, s;
@@ -732,6 +759,12 @@ description: A software studio building tools that help people think, learn, and
       dest.vida(e, uB, dest.P);
       for (i = 0; i < N; i++) { n = nodos[i]; p = dest.P[perm[i]]; s = suave(tramo((w - n.ret) / .78)); var hx = hogarX(n), hy = hogarY(n); n.x = hx + (p.x - hx) * s; n.y = hy + (p.y - hy) * s; }
       if (w >= 1) terminarCambio();
+    } else if (fase === 6) {
+      w += dt / REGRESA;
+      if (deR) deR.vida(e, uDe, deR.P);
+      if (vaR) vaR.vida(e, uB, vaR.P);
+      for (i = 0; i < N; i++) { n = nodos[i]; s = suave(tramo((w - n.ret) / .78)); n.x = n.sx + (hogarX(n) - n.sx) * s; n.y = n.sy + (hogarY(n) - n.sy) * s; }
+      if (w >= 1) terminado = true;
     } else if (fase === 5) {
       w += dt / ENDEREZA;
       figs[2].vida(e, 0, figs[2].P); figs[3].vida(e, 0, figs[3].P);
@@ -809,6 +842,18 @@ description: A software studio building tools that help people think, learn, and
     if (lV > .01) figs[3].adorno(lV, qA, e);
     ctx.globalAlpha = 1;
   }
+  function dibujarRegreso(sv) {
+    var V = Math.sin(Math.min(1, w) * 3.1416), k = 1 - suave(tramo(w / .6)), m = m0 + (1 - m0) * sv + V * 1.6, i, n;
+    if (m > .01) malla(m, V);
+    if (deR) trazar(deR, qDe, lDe * k, V);
+    if (vaR) trazar(vaR, qVa, lVa * k, V);
+    ctx.fillStyle = tinta; ctx.globalAlpha = a0 + (TENUE * .9 - a0) * sv; ctx.beginPath();
+    for (i = 0; i < N; i++) { n = nodos[i]; punto(n.x, n.y, n.r0 + (2.1 - n.r0) * sv); }
+    ctx.fill();
+    if (deR && deR.adorno && lDe * k > .01) deR.adorno(lDe * k, qDe, e, uDe);
+    if (vaR && vaR.adorno && lVa * k > .01) vaR.adorno(lVa * k, qVa, e, uB);
+    ctx.globalAlpha = 1;
+  }
   function dibujarTodo(dt) {
     ctx.clearRect(0, 0, W, H);
     var i, lA = 0, lB = 0, V = 0, m = 0, q = 0, n, ra = .95, rb = .95, de = null, va = null, sv = suave(tramo(w));
@@ -818,6 +863,7 @@ description: A software studio building tools that help people think, learn, and
     else if (fase === 3) { V = Math.sin(Math.min(1, w) * 3.1416); m = 1 - sv + V * 1.6; lB = suave(tramo((w - .5) / .5)); va = dest; q = 1 - sv; }
     else { V = Math.sin(Math.min(1, w) * 3.1416); m = V * 2.8; lA = 1 - suave(tramo(w / .42)); lB = suave(tramo((w - .58) / .42)); de = act; va = sig; q = sv; }
     if (fase === 5) { dibujarTronco(act === figs[2] ? tramo(w) : 1 - tramo(w)); return; }
+    if (fase === 6) { dibujarRegreso(sv); return; }
     if (m > .01) malla(m, V);
     if (de) trazar(de, nodoA, lA, V);
     if (va) trazar(va, nodoB, lB, V);
@@ -847,7 +893,9 @@ description: A software studio building tools that help people think, learn, and
     ind.push(i); nodoA.push(n);
   });
   proxChispa = 0;
-  return function (dt) { paso(dt); dibujarTodo(dt); };
+  function avanzar(dt) { paso(dt); dibujarTodo(dt); return terminado; }
+  avanzar.regresar = regresar;
+  return avanzar;
   }
 
   function animar() {
@@ -857,6 +905,7 @@ description: A software studio building tools that help people think, learn, and
 
   leerColores(); medir();
   if (quieto.matches) { sembrar(); constelacion(); } else animar();
+  document.addEventListener('pointerdown', function () { enVivo = 0; if (figuras) figuras.regresar(); }, { passive: true });
   function alCambiarTema() { leerColores(); if (quieta && !figuras) dibujar(ultimoL); }
   if (oscuro.addEventListener) oscuro.addEventListener('change', alCambiarTema); else oscuro.addListener(alCambiarTema);
   if (window.IntersectionObserver) new IntersectionObserver(function (es) {
