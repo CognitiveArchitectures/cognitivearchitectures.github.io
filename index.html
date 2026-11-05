@@ -367,14 +367,14 @@ description: A software studio building tools that help people think, learn, and
   // FIGURAS. Pasados unos segundos con la red viva, sus mismos puntos forman despacio una figura (átomo, ADN, serpiente,
   // árbol, reloj, infinito), que se queda un rato y vuelve a soltarse mientras los enlaces vibran como cuerdas. Del reloj
   // al infinito el paso es directo; la serpiente se endereza como tronco y de ahí se ramifica en árbol, y con el tiempo
-  // al revés el árbol se recoge y vuelve a ser serpiente. Al terminar una vuelta el tiempo se invierte: todo gira al revés
-  // y la arena sube. Se crea al llegar el momento y devuelve la función que avanza y dibuja un cuadro; el sueño fuera de
+  // al revés el árbol se recoge y vuelve a ser serpiente. Tras el infinito la red toma el relevo y ahí el tiempo se invierte:
+  // todo gira al revés, la arena sube y la secuencia regresa hasta el átomo. Se crea al llegar el momento y devuelve la función que avanza y dibuja un cuadro; el sueño fuera de
   // pantalla y el resto lo pone `latido`. Costo: a lo más unos milisegundos por cuadro; los enlaces, por capas.
   function crearFiguras() {
   var mx = W / 2, my = H / 2, talla = Math.min(W, H) * .44, baja = H < 240, N = nodos.length;
   var VUELTA = 6.28318, QUEDA = 8, SALE = 5, RED = 22, FORMA = 7, CAMBIA = 5, ENDEREZA = 8.5;
   var figs = [], act = null, sig = null, idx = -1, sentido = 1, e = 0, reloj = 0, u = 0, w = 0, uA = 0, uB = 0, fase = 2, dest = null, enRed = RED;  // fase: 0 figura, 1 se suelta, 2 red, 3 se forma, 4 cambio directo, 5 serpiente y árbol
-  var ind = [], perm = [], nodoA = [], nodoB = [], cambios = -1, chispas = [];
+  var ind = [], perm = [], nodoA = [], nodoB = [], chispas = [];
 
   function tramo(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
   function semilla(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -651,7 +651,7 @@ description: A software studio building tools that help people think, learn, and
   function hogarY(n) { return n.hy + Math.cos(reloj * n.gira * .18 + n.ang * 1.7) * 13; }
   function salir() {
     uA = tramo(u);
-    var k = (idx + sentido + figs.length) % figs.length;
+    var k = idx + sentido;
     if ((act.k === 2 && k === 3) || (act.k === 3 && k === 2)) {
       sig = figs[k]; idx = k; w = 0; fase = 5; uB = sentido > 0 ? 0 : 1;
       prepararTronco();
@@ -700,14 +700,14 @@ description: A software studio building tools that help people think, learn, and
     }
   }
   function formar() {
-    var k = (idx + sentido + figs.length) % figs.length;
+    var k = idx + sentido;
+    if (k < 0 || k >= figs.length) { sentido = -sentido; k = idx + sentido; }  // en un extremo, ya en la red, el tiempo se invierte
     dest = figs[k]; idx = k; w = 0; fase = 3; uB = sentido > 0 ? 0 : 1;
     dest.vida(e, uB, dest.P); perm = asignar(dest.P); nodoB = new Array(N);
     for (var i = 0; i < N; i++) nodoB[perm[i]] = nodos[i];
   }
   function terminarCambio() {
     act = dest || sig; sig = null; dest = null; ind = perm; nodoA = nodoB; fase = 0; nuevasChispas();
-    if (++cambios >= figs.length) { sentido = -sentido; cambios = 0; }
     u = sentido > 0 ? 0 : 1;
   }
   function paso(dt) {
